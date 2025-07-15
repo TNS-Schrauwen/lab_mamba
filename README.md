@@ -29,7 +29,7 @@ This is a flexible Docker template for building containerized lab tools using mi
 
 3. **Update the Dockerfile** copy commands if you have additional files:
    ```dockerfile
-   COPY your-script.py /home/mambauser/
+   COPY your-script.py /home/mambauser/your-script.py
    ```
 
 4. **Build your image**:
