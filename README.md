@@ -56,7 +56,7 @@ dependencies:
 ### Adding Files and Programs
 Update the Dockerfile to copy additional files:
 ```dockerfile
-COPY my-program.py /home/mambauser/
+COPY my-program.py /home/mambauser/my-program.py
 COPY config/ /home/mambauser/config/
 ```
 
