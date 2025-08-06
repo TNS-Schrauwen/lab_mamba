@@ -1,0 +1,84 @@
+---
+name: build-test
+kind: pipeline
+type: docker
+platform:
+  arch: amd64
+  os: linux
+steps:
+  - name: build-only
+    image: plugins/docker
+    settings:
+      repo: 10.228.2.36:5000/lab-mamba
+      tags: ["pr"]
+      registry: 10.228.2.36:5000
+      insecure: true
+      dry_run: true
+trigger:
+  event:
+    - pull_request
+
+---
+name: latest-amd64
+kind: pipeline
+type: docker
+platform:
+  arch: amd64
+  os: linux
+steps:
+  - name: publish
+    image: plugins/docker
+    settings:
+      repo: 10.228.2.36:5000/lab-mamba
+      registry: 10.228.2.36:5000
+      insecure: true
+      tags: [latest-linux-amd64, "${DRONE_COMMIT_SHA:0:8}-amd64"]
+trigger:
+  branch:
+    - main
+    - master
+
+---
+name: latest-arm64
+kind: pipeline
+type: docker
+platform:
+  arch: arm64
+  os: linux
+steps:
+  - name: publish
+    image: plugins/docker
+    settings:
+      repo: 10.228.2.36:5000/lab-mamba
+      registry: 10.228.2.36:5000
+      insecure: true
+      tags: [latest-linux-arm64, "${DRONE_COMMIT_SHA:0:8}-arm64"]
+trigger:
+  branch:
+    - main
+    - master
+
+---
+name: manifest
+kind: pipeline
+type: docker
+depends_on:
+  - latest-amd64
+  - latest-arm64
+steps:
+  - name: publish-manifest
+    image: plugins/manifest
+    settings:
+      target: 10.228.2.36:5000/lab-mamba:latest
+      template: 10.228.2.36:5000/lab-mamba:latest-OS-ARCH
+      spec: manifest.tmpl
+      insecure: true
+      platforms:
+        - linux/amd64
+        - linux/arm64
+trigger:
+  branch:
+    - main
+    - master
+  status:
+    - success
