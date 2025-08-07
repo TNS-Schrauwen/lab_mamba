@@ -23,7 +23,7 @@ name: latest-amd64
 kind: pipeline
 type: docker
 platform:
-  arch: amd64
+  arch: arm64
   os: linux
 steps:
   - name: publish
@@ -33,6 +33,7 @@ steps:
       registry: 10.228.2.36:5000
       insecure: true
       tags: [latest-linux-amd64, "${DRONE_COMMIT_SHA:0:8}-amd64"]
+      platforms: linux/amd64
 trigger:
   branch:
     - main
