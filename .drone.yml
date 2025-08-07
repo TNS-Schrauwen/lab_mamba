@@ -1,6 +1,9 @@
 kind: pipeline
 type: docker
 name: build-multi
+platform:
+  arch: arm64  # ← Add this - match your runner
+  os: linux
 
 steps:
 - name: build-multi-arch
@@ -9,8 +12,8 @@ steps:
     - name: docker-sock
       path: /var/run/docker.sock
   commands:
-    - docker buildx create --use --name multiarch --driver docker-container || echo "Builder exists"
-    - docker buildx build --platform linux/amd64,linux/arm64 -t 10.228.2.36:5000/lab-mamba:latest -t 10.228.2.36:5000/lab-mamba:${DRONE_COMMIT_SHA:0:8} --push .
+    - echo "Building multi-arch image..."
+    - docker buildx build --platform linux/amd64,linux/arm64 -t 10.228.2.36:5000/lab-mamba:latest --push .
 
 volumes:
   - name: docker-sock
@@ -21,5 +24,3 @@ trigger:
   branch:
     - main
     - master
-  event:
-    - push
