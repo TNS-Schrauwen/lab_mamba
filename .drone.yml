@@ -9,7 +9,6 @@ steps:
   settings:
     repo: 10.228.2.36:5000/lab-mamba
     registry: 10.228.2.36:5000
-    privileged: true
     insecure: true
     tags:
       - latest
@@ -26,5 +25,3 @@ trigger:
   branch:
     - main
     - master
-  event:
-    - push        # build only on pushes; add tag/pull-request if desired
