@@ -12,13 +12,9 @@ steps:
     - name: docker-sock
       path: /var/run/docker.sock
   commands:
-    - echo "Building multi-arch image..."
-    - docker buildx build --platform linux/amd64,linux/arm64 -t 10.228.2.36:5000/lab-mamba:latest --push .
-
-volumes:
-  - name: docker-sock
-    host:
-      path: /var/run/docker.sock
+    - export DOCKER_BUILDKIT=1
+    - docker buildx create --use --name multiarch --driver-opt network=host || true
+    - docker buildx build --platform linux/amd64,linux/arm64 -t 10.228.2.36:5000/lab-mamba:latest --output type=registry,registry.insecure=true --push .
 
 trigger:
   branch:
