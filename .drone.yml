@@ -6,6 +6,18 @@ platform:
   os: linux
   arch: arm64
 
+services:
+  - name: buildkitd
+    image: moby/buildkit:v0.13
+    command:
+      - --addr
+      - tcp://0.0.0.0:1234
+      - --config
+      - /etc/buildkit/buildkitd.toml
+    volumes:
+      - name: buildkit-config
+        path: /etc/buildkit
+
 steps:
   - name: buildx-push
     image: docker:24.0-cli
@@ -22,25 +34,25 @@ steps:
     commands:
       - |
         set -eu
+        # BuildKit config for HTTP/insecure registry
         cat > /etc/buildkit/buildkitd.toml <<'EOF'
         [registry."10.228.2.36:5000"]
           http = true
           insecure = true
         EOF
 
-        printf "%s" "$REG_PASS" | docker login 10.228.2.36:5000 -u "$REG_USER" --password-stdin >/dev/null 2>&1
+        # Quiet login
+        if [ -n "${REG_USER:-}" ]; then
+          printf "%s" "$REG_PASS" | docker login 10.228.2.36:5000 -u "$REG_USER" --password-stdin >/dev/null 2>&1
+        fi
 
-        docker buildx create \
-          --name multiarch \
-          --use \
-          --driver docker-container \
-          --config /etc/buildkit/buildkitd.toml \
-          --driver-opt network=host >/dev/null 2>&1 || true
-
-        docker buildx inspect --bootstrap >/dev/null 2>&1
+        # Use the BuildKit service (driver=remote), no chance of wrong config
+        docker buildx create --name bk --driver remote tcp://buildkitd:1234 >/dev/null 2>&1 || true
+        docker buildx use bk >/dev/null 2>&1
 
         SHA8="$(printf "%s" "$DRONE_COMMIT_SHA" | cut -c1-8)"
 
+        # Push multi-arch manifest directly
         docker buildx build \
           --platform linux/amd64,linux/arm64 \
           -t 10.228.2.36:5000/lab-mamba:latest \
