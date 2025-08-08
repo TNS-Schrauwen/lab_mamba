@@ -1,71 +1,38 @@
 ---
-name: build-and-push
+name: build-and-push-multi-arch
 kind: pipeline
 type: docker
+platform:
+  arch: arm64
+  os: linux
 
 steps:
-  - name: build-amd64
-    image: plugins/docker:24.0
-    node:
-      arch: amd64              # <-- schedules on the amd64-labeled runner
-    settings:
-      repo: 10.228.2.36:5000/lab-mamba
-      registry: 10.228.2.36:5000
-      username:
-        from_secret: docker_username
-      password:
-        from_secret: docker_password
-      insecure: true
-      context: .
-      dockerfile: Dockerfile
-      tags:
-        - ${DRONE_COMMIT_SHA:0:8}-amd64
-        - amd64
+  - name: build-multi-arch
+    image: docker:cli
+    environment:
+      DOCKER_BUILDKIT: "1"
+      DOCKER_CLI_EXPERIMENTAL: "enabled"
+    volumes:
+      - name: docker-sock
+        path: /var/run/docker.sock
+    commands:
+      # 1) Write BuildKit config that marks the registry as HTTP/insecure
+      - |
+        cat > /root/buildkitd.toml << 'EOF'
+        [registry."10.228.2.36:5000"]
+          http = true
+          insecure = true
+        EOF
 
-  - name: build-arm64
-    image: plugins/docker:24.0
-    node:
-      arch: arm64              # <-- schedules on the arm64-labeled runner
-    settings:
-      repo: 10.228.2.36:5000/lab-mamba
-      registry: 10.228.2.36:5000
-      username:
-        from_secret: docker_username
-      password:
-        from_secret: docker_password
-      insecure: true
-      context: .
-      dockerfile: Dockerfile
-      tags:
-        - ${DRONE_COMMIT_SHA:0:8}-arm64
-        - arm64
+      # 2) Optional: login if your registry requires auth
+      # - docker login 10.228.2.36:5000 -u "$REG_USER" -p "$REG_PASS"
 
-  - name: publish-manifest
-    image: plugins/manifest:1
-    settings:
-      username:
-        from_secret: docker_username
-      password:
-        from_secret: docker_password
-      registry: 10.228.2.36:5000
-      insecure: true
-      spec: |
-        image: 10.228.2.36:5000/lab-mamba:latest
-        tags:
-          - ${DRONE_COMMIT_SHA:0:8}
-        manifests:
-          - image: 10.228.2.36:5000/lab-mamba:${DRONE_COMMIT_SHA:0:8}-amd64
-            platform:
-              os: linux
-              architecture: amd64
-          - image: 10.228.2.36:5000/lab-mamba:${DRONE_COMMIT_SHA:0:8}-arm64
-            platform:
-              os: linux
-              architecture: arm64
-    depends_on:
-      - build-amd64
-      - build-arm64
+      # 3) Create a dedicated builder that uses that config
+      - docker buildx create --use --name multiarch --config /root/buildkitd.toml || docker buildx use multiarch
 
-trigger:
-  branch: [main, master]
-  event: [push]
+      # 4) Build and PUSH multi-arch directly (don't --load)
+      - docker buildx build --platform linux/amd64,linux/arm64 -t 10.228.2.36:5000/lab-mamba:latest --push .
+volumes:
+  - name: docker-sock
+    host:
+      path: /var/run/docker.sock
