@@ -8,30 +8,23 @@ platform:
 
 steps:
   - name: build-multi-arch
-    image: docker:cli
+    image: docker:24-cli   # or docker:25-cli
     environment:
       DOCKER_BUILDKIT: "1"
-      DOCKER_CLI_EXPERIMENTAL: "enabled"
     volumes:
       - name: docker-sock
         path: /var/run/docker.sock
     commands:
-      # 1) Write BuildKit config that marks the registry as HTTP/insecure
-      - |
-        cat > /root/buildkitd.toml << 'EOF'
-        [registry."10.228.2.36:5000"]
-          http = true
-          insecure = true
-        EOF
+      - docker buildx version
+      - docker buildx create --driver docker-container --name multiarch --use || docker buildx use multiarch
+      - docker buildx inspect --bootstrap
 
-      # 2) Optional: login if your registry requires auth
-      # - docker login 10.228.2.36:5000 -u "$REG_USER" -p "$REG_PASS"
-
-      # 3) Create a dedicated builder that uses that config
-      - docker buildx create --use --name multiarch --config /root/buildkitd.toml || docker buildx use multiarch
-
-      # 4) Build and PUSH multi-arch directly (don't --load)
-      - docker buildx build --platform linux/amd64,linux/arm64 -t 10.228.2.36:5000/lab-mamba:latest --push .
+      # Force HTTP with registry.insecure=true and push=true
+      - >
+        docker buildx build
+        --platform linux/amd64,linux/arm64
+        --output=type=image,name=10.228.2.36:5000/lab-mamba:latest,push=true,registry.insecure=true
+        .
 volumes:
   - name: docker-sock
     host:
