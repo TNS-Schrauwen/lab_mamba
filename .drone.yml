@@ -3,33 +3,50 @@ name: build-and-push-multi-arch
 kind: pipeline
 type: docker
 platform:
-  arch: arm64
   os: linux
+  arch: arm64
 
 steps:
-  # Step 1: Build true multi-arch images using buildx
-  - name: build-multi-arch
-    image: docker:cli  # Changed from dind to cli
+  - name: buildx-push
+    image: docker:24.0-cli
     volumes:
       - name: docker-sock
         path: /var/run/docker.sock
+    environment:
+      REG_USER:
+        from_secret: docker_username
+      REG_PASS:
+        from_secret: docker_password
     commands:
-      - docker buildx create --use --name multiarch || true
-      - docker buildx build --platform linux/amd64,linux/arm64 -t 10.228.2.36:5000/lab-mamba:latest --load .
-      # ↑ Added --load so images are available for plugins/docker to push
-      
-  # Step 2: Push using plugins/docker (which handles insecure registry well)
-  - name: push-to-registry
-    image: plugins/docker
-    settings:
-      repo: 10.228.2.36:5000/lab-mamba
-      registry: 10.228.2.36:5000
-      insecure: true
-      tags: [latest, "${DRONE_COMMIT_SHA:0:8}"]
-      context: .
-      dockerfile: Dockerfile
-    depends_on:
-      - build-multi-arch
+      - |
+        set -eu
+        # Allow HTTP/insecure for your registry
+        cat > buildkitd.toml <<'EOF'
+        [registry."10.228.2.36:5000"]
+          http = true
+          insecure = true
+        EOF
+
+        # Login (quiet)
+        if [ -n "${REG_USER:-}" ]; then
+          printf "%s" "$REG_PASS" | docker login 10.228.2.36:5000 -u "$REG_USER" --password-stdin >/dev/null 2>&1
+        fi
+
+        # Create & bootstrap builder (quiet)
+        docker buildx create --name multiarch --use --driver docker-container --config ./buildkitd.toml --driver-opt network=host >/dev/null 2>&1 || true
+        docker buildx inspect --bootstrap >/dev/null 2>&1
+
+        # Short SHA tag
+        SHA8="$(printf "%s" "$DRONE_COMMIT_SHA" | cut -c1-8)"
+
+        # Build & push multi-arch manifest directly (minimal logs)
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          -t 10.228.2.36:5000/lab-mamba:latest \
+          -t 10.228.2.36:5000/lab-mamba:$SHA8 \
+          --push \
+          --progress=plain \
+          .
 
 volumes:
   - name: docker-sock
@@ -37,8 +54,5 @@ volumes:
       path: /var/run/docker.sock
 
 trigger:
-  branch:
-    - main
-    - master
-  event:
-    - push
+  branch: [main, master]
+  event: [push]
