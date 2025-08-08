@@ -1,22 +1,44 @@
+---
+name: build-and-push-multi-arch
 kind: pipeline
 type: docker
-name: build-multi
 platform:
-  arch: arm64  # ← Add this - match your runner
+  arch: arm64
   os: linux
 
 steps:
-- name: build-multi-arch
-  image: docker:dind
-  volumes:
-    - name: docker-sock
+  # Step 1: Build true multi-arch images using buildx
+  - name: build-multi-arch
+    image: docker:cli  # Changed from dind to cli
+    volumes:
+      - name: docker-sock
+        path: /var/run/docker.sock
+    commands:
+      - docker buildx create --use --name multiarch || true
+      - docker buildx build --platform linux/amd64,linux/arm64 -t 10.228.2.36:5000/lab-mamba:latest --load .
+      # ↑ Added --load so images are available for plugins/docker to push
+      
+  # Step 2: Push using plugins/docker (which handles insecure registry well)
+  - name: push-to-registry
+    image: plugins/docker
+    settings:
+      repo: 10.228.2.36:5000/lab-mamba
+      registry: 10.228.2.36:5000
+      insecure: true
+      tags: [latest, "${DRONE_COMMIT_SHA:0:8}"]
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - build-multi-arch
+
+volumes:
+  - name: docker-sock
+    host:
       path: /var/run/docker.sock
-  commands:
-    - export DOCKER_BUILDKIT=1
-    - docker buildx create --use --name multiarch --driver-opt network=host || true
-    - docker buildx build --platform linux/amd64,linux/arm64 -t 10.228.2.36:5000/lab-mamba:latest --output type=registry,registry.insecure=true --push .
 
 trigger:
   branch:
     - main
     - master
+  event:
+    - push
