@@ -1,16 +1,13 @@
 ---
-name: build-and-push-multi-arch
+name: build-and-push
 kind: pipeline
 type: docker
-platform:
-  os: linux
-  arch: arm64
 
 steps:
-  - name: buildx-build-and-push
-    # Pin a recent plugin with buildx baked in (works on arm64)
-    image: plugins/docker:21
-    privileged: true
+  - name: build-amd64
+    image: plugins/docker:24.0
+    node:
+      arch: amd64              # <-- schedules on the amd64-labeled runner
     settings:
       repo: 10.228.2.36:5000/lab-mamba
       registry: 10.228.2.36:5000
@@ -19,22 +16,55 @@ steps:
       password:
         from_secret: docker_password
       insecure: true
-
-      # real multi-arch
-      buildx: true
-      platforms:
-        - linux/amd64
-        - linux/arm64
-
-#      # local/insecure registries sometimes fail on these extras
-#      sbom: false
-#      provenance: false
-
       context: .
       dockerfile: Dockerfile
       tags:
-        - latest
-        - ${DRONE_COMMIT_SHA:0:8}
+        - ${DRONE_COMMIT_SHA:0:8}-amd64
+        - amd64
+
+  - name: build-arm64
+    image: plugins/docker:24.0
+    node:
+      arch: arm64              # <-- schedules on the arm64-labeled runner
+    settings:
+      repo: 10.228.2.36:5000/lab-mamba
+      registry: 10.228.2.36:5000
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      insecure: true
+      context: .
+      dockerfile: Dockerfile
+      tags:
+        - ${DRONE_COMMIT_SHA:0:8}-arm64
+        - arm64
+
+  - name: publish-manifest
+    image: plugins/manifest:1
+    settings:
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      registry: 10.228.2.36:5000
+      insecure: true
+      spec: |
+        image: 10.228.2.36:5000/lab-mamba:latest
+        tags:
+          - ${DRONE_COMMIT_SHA:0:8}
+        manifests:
+          - image: 10.228.2.36:5000/lab-mamba:${DRONE_COMMIT_SHA:0:8}-amd64
+            platform:
+              os: linux
+              architecture: amd64
+          - image: 10.228.2.36:5000/lab-mamba:${DRONE_COMMIT_SHA:0:8}-arm64
+            platform:
+              os: linux
+              architecture: arm64
+    depends_on:
+      - build-amd64
+      - build-arm64
 
 trigger:
   branch: [main, master]
