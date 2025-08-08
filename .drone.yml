@@ -10,12 +10,16 @@ steps:
   - name: build-multi-arch
     image: docker:24-cli   # or docker:25-cli
     environment:
+        DOCKER_USERNAME:
+          from_secret: docker_username
+        DOCKER_TOKEN:
+          from_secret: docker_token  
       DOCKER_BUILDKIT: "1"
     volumes:
       - name: docker-sock
         path: /var/run/docker.sock
     commands:
-      - docker buildx version
+      - echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
       - docker buildx create --driver docker-container --name multiarch --use || docker buildx use multiarch
       - docker buildx inspect --bootstrap
 
