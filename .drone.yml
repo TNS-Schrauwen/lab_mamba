@@ -8,13 +8,13 @@ platform:
 
 steps:
   - name: build-multi-arch
-    image: docker:24-cli   # or docker:25-cli
+    image: docker:24-cli
     environment:
         DOCKER_USERNAME:
           from_secret: docker_username
         DOCKER_TOKEN:
           from_secret: docker_token  
-      DOCKER_BUILDKIT: "1"
+        DOCKER_BUILDKIT: "1"
     volumes:
       - name: docker-sock
         path: /var/run/docker.sock
