@@ -6,29 +6,49 @@ platform:
   os: linux
   arch: arm64
 
+services:
+  - name: dind
+    image: docker:24.0-dind
+    privileged: true
+    command:
+      - --insecure-registry=10.228.2.36:5000
+      - --registry-mirror=
+      - --host=tcp://0.0.0.0:2375
+
 steps:
-  - name: buildx-build-and-push
-    image: plugins/docker:latest
-    settings:
-      repo: 10.228.2.36:5000/lab-mamba
-      registry: 10.228.2.36:5000
-      username:
+  - name: buildx-push
+    image: docker:24.0-cli
+    environment:
+      DOCKER_HOST: tcp://dind:2375
+      REG_USER:
         from_secret: docker_username
-      password:
+      REG_PASS:
         from_secret: docker_password
-      insecure: true
+    commands: |
+      set -eu
+      # enable qemu for cross-build (quiet)
+      docker run --privileged --rm tonistiigi/binfmt --install all >/dev/null 2>&1 || true
 
-      # buildx multi-arch in the plugin (no second build)
-      buildx: true
-      platforms:
-        - linux/amd64
-        - linux/arm64
+      # login (quiet)
+      if [ -n "${REG_USER:-}" ]; then
+        printf "%s" "$REG_PASS" | docker login 10.228.2.36:5000 -u "$REG_USER" --password-stdin >/dev/null 2>&1
+      fi
 
-      context: .
-      dockerfile: Dockerfile
-      tags:
-        - latest
-        - ${DRONE_COMMIT_SHA:0:8}
+      # fresh builder inside DinD
+      docker buildx rm ci >/dev/null 2>&1 || true
+      docker buildx create --name ci --driver docker-container --use >/dev/null
+      docker buildx inspect --bootstrap >/dev/null
+
+      SHA8="$(printf "%s" "${DRONE_COMMIT_SHA:-unknown}" | cut -c1-8)"
+
+      # one build, real multi-arch, push to HTTP registry
+      docker buildx build \
+        --platform linux/amd64,linux/arm64 \
+        -t 10.228.2.36:5000/lab-mamba:latest \
+        -t 10.228.2.36:5000/lab-mamba:$SHA8 \
+        --push \
+        --progress=plain \
+        .
 
 trigger:
   branch: [main, master]
