@@ -7,8 +7,9 @@ platform:
   arch: arm64
 
 steps:
-  - name: buildx-push
-    image: plugins/docker:latest
+  - name: buildx-build-and-push
+    # Pin a recent plugin with buildx baked in (works on arm64)
+    image: plugins/docker:24.0
     privileged: true
     settings:
       repo: 10.228.2.36:5000/lab-mamba
@@ -17,17 +18,24 @@ steps:
         from_secret: docker_username
       password:
         from_secret: docker_password
-      insecure: true      # HTTP ok
-      buildx: true        # actually use buildx/BuildKit
+      insecure: true
+
+      # real multi-arch
+      buildx: true
+      platforms:
+        - linux/amd64
+        - linux/arm64
+
+#      # local/insecure registries sometimes fail on these extras
+#      sbom: false
+#      provenance: false
+
       context: .
       dockerfile: Dockerfile
       tags:
         - latest
         - ${DRONE_COMMIT_SHA:0:8}
-    environment:
-      # IMPORTANT: pass buildx flags here; this is what triggers multi-arch
-      PLUGIN_BUILDX_OPTIONS_SEMICOLON: "--platform=linux/amd64,linux/arm64;--provenance=false"
-      # (use _SEMICOLON when a flag contains commas)
+
 trigger:
   branch: [main, master]
   event: [push]
