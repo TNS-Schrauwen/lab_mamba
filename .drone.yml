@@ -10,10 +10,11 @@ services:
   - name: dind
     image: docker:24.0-dind
     privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""     # disable TLS so we can use plain tcp://
     command:
-      - --insecure-registry=10.228.2.36:5000
-      - --registry-mirror=
       - --host=tcp://0.0.0.0:2375
+      - --insecure-registry=10.228.2.36:5000
 
 steps:
   - name: buildx-push
@@ -24,31 +25,39 @@ steps:
         from_secret: docker_username
       REG_PASS:
         from_secret: docker_password
-    commands: |
-      set -eu
-      # enable qemu for cross-build (quiet)
-      docker run --privileged --rm tonistiigi/binfmt --install all >/dev/null 2>&1 || true
+    commands:
+      - |
+        set -eu
 
-      # login (quiet)
-      if [ -n "${REG_USER:-}" ]; then
-        printf "%s" "$REG_PASS" | docker login 10.228.2.36:5000 -u "$REG_USER" --password-stdin >/dev/null 2>&1
-      fi
+        # wait for DinD to be ready
+        for i in $(seq 1 30); do
+          docker version >/dev/null 2>&1 && break
+          sleep 1
+        done
 
-      # fresh builder inside DinD
-      docker buildx rm ci >/dev/null 2>&1 || true
-      docker buildx create --name ci --driver docker-container --use >/dev/null
-      docker buildx inspect --bootstrap >/dev/null
+        # enable qemu for cross-build (inside DinD)
+        docker run --privileged --rm tonistiigi/binfmt --install all >/dev/null 2>&1 || true
 
-      SHA8="$(printf "%s" "${DRONE_COMMIT_SHA:-unknown}" | cut -c1-8)"
+        # login (quiet)
+        if [ -n "${REG_USER:-}" ]; then
+          printf "%s" "$REG_PASS" | docker login 10.228.2.36:5000 -u "$REG_USER" --password-stdin >/dev/null 2>&1
+        fi
 
-      # one build, real multi-arch, push to HTTP registry
-      docker buildx build \
-        --platform linux/amd64,linux/arm64 \
-        -t 10.228.2.36:5000/lab-mamba:latest \
-        -t 10.228.2.36:5000/lab-mamba:$SHA8 \
-        --push \
-        --progress=plain \
-        .
+        # fresh buildx builder living inside DinD
+        docker buildx rm ci >/dev/null 2>&1 || true
+        docker buildx create --name ci --driver docker-container --use >/dev/null
+        docker buildx inspect --bootstrap >/dev/null
+
+        SHA8="$(printf "%s" "${DRONE_COMMIT_SHA:-unknown}" | cut -c1-8)"
+
+        # one build, true multi-arch, push over HTTP
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          -t 10.228.2.36:5000/lab-mamba:latest \
+          -t 10.228.2.36:5000/lab-mamba:$SHA8 \
+          --push \
+          --progress=plain \
+          .
 
 trigger:
   branch: [main, master]
