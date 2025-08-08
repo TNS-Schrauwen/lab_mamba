@@ -9,7 +9,7 @@ platform:
 steps:
   - name: buildx-build-and-push
     # Pin a recent plugin with buildx baked in (works on arm64)
-    image: plugins/docker:28.3.3
+    image: plugins/docker:21
     privileged: true
     settings:
       repo: 10.228.2.36:5000/lab-mamba
