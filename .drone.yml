@@ -6,59 +6,28 @@ platform:
   os: linux
   arch: arm64
 
-services:
-  - name: dind
-    image: docker:24.0-dind
-    privileged: true
-    environment:
-      DOCKER_TLS_CERTDIR: ""     # disable TLS so we can use plain tcp://
-    command:
-      - --host=tcp://0.0.0.0:2375
-      - --insecure-registry=10.228.2.36:5000
-
 steps:
   - name: buildx-push
-    image: docker:24.0-cli
-    environment:
-      DOCKER_HOST: tcp://dind:2375
-      REG_USER:
+    image: plugins/docker:latest
+    privileged: true
+    settings:
+      repo: 10.228.2.36:5000/lab-mamba
+      registry: 10.228.2.36:5000
+      username:
         from_secret: docker_username
-      REG_PASS:
+      password:
         from_secret: docker_password
-    commands:
-      - |
-        set -eu
-
-        # wait for DinD to be ready
-        for i in $(seq 1 30); do
-          docker version >/dev/null 2>&1 && break
-          sleep 1
-        done
-
-        # enable qemu for cross-build (inside DinD)
-        docker run --privileged --rm tonistiigi/binfmt --install all >/dev/null 2>&1 || true
-
-        # login (quiet)
-        if [ -n "${REG_USER:-}" ]; then
-          printf "%s" "$REG_PASS" | docker login 10.228.2.36:5000 -u "$REG_USER" --password-stdin >/dev/null 2>&1
-        fi
-
-        # fresh buildx builder living inside DinD
-        docker buildx rm ci >/dev/null 2>&1 || true
-        docker buildx create --name ci --driver docker-container --use >/dev/null
-        docker buildx inspect --bootstrap >/dev/null
-
-        SHA8="$(printf "%s" "${DRONE_COMMIT_SHA:-unknown}" | cut -c1-8)"
-
-        # one build, true multi-arch, push over HTTP
-        docker buildx build \
-          --platform linux/amd64,linux/arm64 \
-          -t 10.228.2.36:5000/lab-mamba:latest \
-          -t 10.228.2.36:5000/lab-mamba:$SHA8 \
-          --push \
-          --progress=plain \
-          .
-
+      insecure: true      # HTTP ok
+      buildx: true        # actually use buildx/BuildKit
+      context: .
+      dockerfile: Dockerfile
+      tags:
+        - latest
+        - ${DRONE_COMMIT_SHA:0:8}
+    environment:
+      # IMPORTANT: pass buildx flags here; this is what triggers multi-arch
+      PLUGIN_BUILDX_OPTIONS_SEMICOLON: "--platform=linux/amd64,linux/arm64;--provenance=false"
+      # (use _SEMICOLON when a flag contains commas)
 trigger:
   branch: [main, master]
   event: [push]
