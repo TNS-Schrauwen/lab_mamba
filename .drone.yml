@@ -29,6 +29,43 @@ steps:
         --platform linux/amd64,linux/arm64
         --output=type=image,name=10.228.2.36:5000/lab-mamba:latest,push=true,registry.insecure=true
         .
+
+  - name: push-to-ecr
+    image: public.ecr.aws/aws-cli/aws-cli:latest
+    environment:
+        AWS_ACCESS_KEY_ID:
+          from_secret: aws_access_key_id
+        AWS_SECRET_ACCESS_KEY:
+          from_secret: aws_secret_access_key
+        AWS_DEFAULT_REGION: us-west-2
+        ECR_REGISTRY:
+          from_secret: ecr_registry
+    volumes:
+      - name: docker-sock
+        path: /var/run/docker.sock
+    entrypoint: ["/bin/sh", "-c"]
+    commands:
+      - |
+        # Install docker CLI
+        yum install -y docker
+        
+        # Login to ECR
+        aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REGISTRY
+        
+        # Create repository if it doesn't exist
+        aws ecr describe-repositories --repository-names lab/tools/lab-mamba || \
+          aws ecr create-repository --repository-name lab/tools/lab-mamba
+        
+        # Copy multi-arch image from local registry to ECR, preserving the manifest
+        docker buildx imagetools create \
+          -t $ECR_REGISTRY/lab/tools/lab-mamba:latest \
+          10.228.2.36:5000/lab-mamba:latest
+    when:
+      status:
+        - success
+    depends_on:
+      - build-multi-arch
+  
 volumes:
   - name: docker-sock
     host:
