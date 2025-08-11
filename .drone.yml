@@ -6,9 +6,17 @@ platform:
   arch: arm64
   os: linux
 
+volumes:
+  - name: docker-sock
+    host:
+      path: /var/run/docker.sock
+  - name: buildx-cache
+    host:
+      path: /tmp/buildx-cache
+
 steps:
-  - name: build-and-push-ecr
-    image: docker:24-cli
+  - name: ecr-login
+    image: amazon/aws-cli:2.15.17
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: aws_access_key_id
@@ -19,35 +27,56 @@ steps:
         from_secret: ecr_registry
       REPO_NAME:
         from_secret: repo_name
+    commands:
+      - |
+        aws ecr describe-repositories --repository-names $REPO_NAME 2>/dev/null || \
+          aws ecr create-repository --repository-name $REPO_NAME \
+            --image-scanning-configuration scanOnPush=true \
+            --encryption-configuration encryptionType=AES256
+      
+      # Get ECR login token
+      - aws ecr get-login-password > /tmp/ecr-token
+
+  - name: build-and-push
+    image: docker:24-cli-alpine3.18
+    environment:
+      ECR_REGISTRY:
+        from_secret: ecr_registry
+      REPO_NAME:
+        from_secret: repo_name
       DOCKER_BUILDKIT: "1"
+      BUILDX_NO_DEFAULT_ATTESTATIONS: "1" 
     volumes:
       - name: docker-sock
         path: /var/run/docker.sock
+      - name: buildx-cache
+        path: /tmp/buildx-cache
+    depends_on:
+      - ecr-login
     commands:
-      # Install AWS CLI in the docker image
-      - apk add --no-cache aws-cli
-      
-      # Login to ECR
-      - aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REGISTRY
-      
-      # Create repository if it doesn't exist
+      - cat /tmp/ecr-token | docker login --username AWS --password-stdin $ECR_REGISTRY
       - |
-        aws ecr describe-repositories --repository-names $REPO_NAME || \
-          aws ecr create-repository --repository-name $REPO_NAME
-      
-      # Setup buildx for multi-arch
-      - docker buildx create --driver docker-container --name multiarch --use || docker buildx use multiarch
-      - docker buildx inspect --bootstrap
-      
-
+        docker buildx create \
+          --driver docker-container \
+          --name multiarch \
+          --driver-opt network=host \
+          --use 2>/dev/null || docker buildx use multiarch
       - |
         docker buildx build \
           --platform linux/amd64,linux/arm64 \
+          --cache-from type=local,src=/tmp/buildx-cache \
+          --cache-to type=local,dest=/tmp/buildx-cache-new,mode=max \
           --tag $ECR_REGISTRY/$REPO_NAME:latest \
+          --tag $ECR_REGISTRY/$REPO_NAME:$DRONE_COMMIT_SHA \
           --push \
+          --progress=plain \
           .
+      # Rotate cache to prevent unlimited growth
+      - rm -rf /tmp/buildx-cache
+      - mv /tmp/buildx-cache-new /tmp/buildx-cache || true
 
-volumes:
-  - name: docker-sock
-    host:
-      path: /var/run/docker.sock
+trigger:
+  branch:
+    - main
+  event:
+    - push
