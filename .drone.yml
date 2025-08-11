@@ -1,5 +1,5 @@
 ---
-# changed to https
+# changed to https webhook URL
 name: build-and-push-multi-arch
 kind: pipeline
 type: docker
