@@ -68,14 +68,22 @@ steps:
           --name multiarch \
           --driver-opt network=host \
           --use 2>/dev/null || docker buildx use multiarch
+
+      - |
+        if [ "$DRONE_BRANCH" = "main" ]; then
+          TAG_NAME="latest"
+        elif [ "$DRONE_BRANCH" = "dev" ]; then
+          TAG_NAME="dev"
+        else
+          TAG_NAME="$DRONE_BRANCH"
+        fi
       
       - |
         docker buildx build \
           --platform linux/amd64,linux/arm64 \
           --cache-from type=local,src=/tmp/buildx-cache \
           --cache-to type=local,dest=/tmp/buildx-cache-new,mode=max \
-          --tag $ECR_REGISTRY/$REPO_NAME:latest \
-          --tag $ECR_REGISTRY/$REPO_NAME:$DRONE_COMMIT_SHA \
+          --tag $ECR_REGISTRY/$REPO_NAME:$TAG_NAME \
           --push \
           --progress=plain \
           .
@@ -83,5 +91,6 @@ steps:
 trigger:
   branch:
     - main
+    - dev
   event:
     - push
