@@ -1,6 +1,5 @@
 ---
-# changed to https webhook URL and setting
-name: build-and-push-multi-arch
+name: build-and-push-to-ecr
 kind: pipeline
 type: docker
 platform:
@@ -8,65 +7,44 @@ platform:
   os: linux
 
 steps:
-  - name: build-multi-arch
+  - name: build-and-push-ecr
     image: docker:24-cli
     environment:
-        DOCKER_USERNAME:
-          from_secret: docker_username
-        DOCKER_TOKEN:
-          from_secret: docker_token  
-        DOCKER_BUILDKIT: "1"
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+      AWS_DEFAULT_REGION: us-west-2
+      ECR_REGISTRY:
+        from_secret: ecr_registry
+      DOCKER_BUILDKIT: "1"
     volumes:
       - name: docker-sock
         path: /var/run/docker.sock
     commands:
-      - echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      - docker buildx create --driver docker-container --name multiarch --use || docker buildx use multiarch
-      - docker buildx inspect --bootstrap
-
-      # Force HTTP with registry.insecure=true and push=true
-      - >
-        docker buildx build
-        --platform linux/amd64,linux/arm64
-        --output=type=image,name=44.225.162.79/lab-mamba:latest,push=true
-        .
-
-  - name: push-to-ecr
-    image: public.ecr.aws/aws-cli/aws-cli:latest
-    environment:
-        AWS_ACCESS_KEY_ID:
-          from_secret: aws_access_key_id
-        AWS_SECRET_ACCESS_KEY:
-          from_secret: aws_secret_access_key
-        AWS_DEFAULT_REGION: us-west-2
-        ECR_REGISTRY:
-          from_secret: ecr_registry
-    volumes:
-      - name: docker-sock
-        path: /var/run/docker.sock
-    entrypoint: ["/bin/sh", "-c"]
-    commands:
+      # Install AWS CLI in the docker image
+      - apk add --no-cache aws-cli
+      
+      # Login to ECR
+      - aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REGISTRY
+      
+      # Create repository if it doesn't exist
       - |
-        # Install docker CLI
-        yum install -y docker
-        
-        # Login to ECR
-        aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REGISTRY
-        
-        # Create repository if it doesn't exist
         aws ecr describe-repositories --repository-names lab/tools/lab-mamba || \
           aws ecr create-repository --repository-name lab/tools/lab-mamba
-        
-        # Copy multi-arch image from local registry to ECR, preserving the manifest
-        docker buildx imagetools create \
-          -t $ECR_REGISTRY/lab/tools/lab-mamba:latest \
-          44.225.162.79/lab-mamba:latest
-    when:
-      status:
-        - success
-    depends_on:
-      - build-multi-arch
-  
+      
+      # Setup buildx for multi-arch
+      - docker buildx create --driver docker-container --name multiarch --use || docker buildx use multiarch
+      - docker buildx inspect --bootstrap
+      
+      # Build and push directly to ECR with multi-arch support
+      - |
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          --tag $ECR_REGISTRY/lab/tools/lab-mamba:latest \
+          --push \
+          .
+
 volumes:
   - name: docker-sock
     host:
