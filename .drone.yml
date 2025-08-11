@@ -13,6 +13,8 @@ volumes:
   - name: buildx-cache
     host:
       path: /tmp/buildx-cache
+  - name: shared-data
+    temp: {}
 
 steps:
   - name: ecr-login
@@ -27,6 +29,9 @@ steps:
         from_secret: ecr_registry
       REPO_NAME:
         from_secret: repo_name
+    volumes:
+      - name: shared-data
+        path: /shared
     commands:
       - |
         aws ecr describe-repositories --repository-names $REPO_NAME 2>/dev/null || \
@@ -34,8 +39,7 @@ steps:
             --image-scanning-configuration scanOnPush=true \
             --encryption-configuration encryptionType=AES256
       
-      # Get ECR login token
-      - aws ecr get-login-password > /tmp/ecr-token
+      - aws ecr get-login-password > /shared/ecr-token
 
   - name: build-and-push
     image: docker:28.3.3-cli-alpine3.22
@@ -51,16 +55,20 @@ steps:
         path: /var/run/docker.sock
       - name: buildx-cache
         path: /tmp/buildx-cache
+      - name: shared-data
+        path: /shared
     depends_on:
       - ecr-login
     commands:
-      - cat /tmp/ecr-token | docker login --username AWS --password-stdin $ECR_REGISTRY
+      - cat /shared/ecr-token | docker login --username AWS --password-stdin $ECR_REGISTRY
+      
       - |
         docker buildx create \
           --driver docker-container \
           --name multiarch \
           --driver-opt network=host \
           --use 2>/dev/null || docker buildx use multiarch
+      
       - |
         docker buildx build \
           --platform linux/amd64,linux/arm64 \
@@ -71,6 +79,7 @@ steps:
           --push \
           --progress=plain \
           .
+      
       # Rotate cache to prevent unlimited growth
       - rm -rf /tmp/buildx-cache
       - mv /tmp/buildx-cache-new /tmp/buildx-cache || true
