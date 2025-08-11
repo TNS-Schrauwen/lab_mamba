@@ -17,6 +17,8 @@ steps:
       AWS_DEFAULT_REGION: us-west-2
       ECR_REGISTRY:
         from_secret: ecr_registry
+      REPO_NAME:
+        from_secret: repo_name
       DOCKER_BUILDKIT: "1"
     volumes:
       - name: docker-sock
@@ -30,18 +32,18 @@ steps:
       
       # Create repository if it doesn't exist
       - |
-        aws ecr describe-repositories --repository-names lab/tools/lab-mamba || \
-          aws ecr create-repository --repository-name lab/tools/lab-mamba
+        aws ecr describe-repositories --repository-names repo_name || \
+          aws ecr create-repository --repository-name repo_name
       
       # Setup buildx for multi-arch
       - docker buildx create --driver docker-container --name multiarch --use || docker buildx use multiarch
       - docker buildx inspect --bootstrap
       
-      # Build and push directly to ECR with multi-arch support
+
       - |
         docker buildx build \
           --platform linux/amd64,linux/arm64 \
-          --tag $ECR_REGISTRY/lab/tools/lab-mamba:latest \
+          --tag $ECR_REGISTRY/repo_name:latest \
           --push \
           .
 
