@@ -16,7 +16,7 @@ volumes:
 
 steps:
   - name: ecr-login
-    image: amazon/aws-cli:2.15.17
+    image: amazon/aws-cli:2.28.7
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: aws_access_key_id
@@ -38,7 +38,7 @@ steps:
       - aws ecr get-login-password > /tmp/ecr-token
 
   - name: build-and-push
-    image: docker:24-cli-alpine3.18
+    image: docker:28.3.3-cli-alpine3.22
     environment:
       ECR_REGISTRY:
         from_secret: ecr_registry
