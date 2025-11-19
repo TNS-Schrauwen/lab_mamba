@@ -15,7 +15,7 @@ steps:
       secret_key:
         from_secret: aws_secret_access_key
       repo:
-        from_secret: repo_name
+        lab/tools/lab-mamba
       registry:
         from_secret: ecr_registry
       tags:
