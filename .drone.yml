@@ -53,7 +53,7 @@ steps:
       region: us-west-2
       tags:
         - main-linux-amd64
-        - latest-linux-amd64
+        - latest
       create_repository: true
 
   - name: publish-tag
