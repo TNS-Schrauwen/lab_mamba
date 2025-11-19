@@ -9,13 +9,18 @@ platform:
 steps:
   - name: publish
     image: plugins/ecr
+    environment:
+      ECR_REGISTRY:
+        from_secret: ecr_registry
+      REPO_NAME:
+        from_secret: repo_name
     settings:
       access_key:
         from_secret: aws_access_key_id
       secret_key:
         from_secret: aws_secret_access_key
       repo:
-        lab/tools/lab-mamba
+        from_secret: repo_name
       registry:
         from_secret: ecr_registry
       region:
