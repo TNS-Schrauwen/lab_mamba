@@ -18,6 +18,8 @@ steps:
         lab/tools/lab-mamba
       registry:
         from_secret: ecr_registry
+      region:
+        us-west-2
       tags:
         - ${DRONE_BRANCH/\//-}-linux-amd64
       cache_from:
