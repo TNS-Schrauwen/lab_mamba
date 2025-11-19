@@ -1,4 +1,4 @@
-Version 2.0.1
+Version 2.0.2
 # Lab Mamba Docker Template
 
 This is a flexible Docker template for building containerized lab tools using micromamba as the package manager. The template provides a solid foundation for scientific computing environments with conda-forge and bioconda package support.
