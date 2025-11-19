@@ -47,6 +47,8 @@ steps:
         from_secret: repo_name
       registry:
         from_secret: ecr_registry
+      region:
+        us-west-2
       tags:
         - ${DRONE_BRANCH/\//-}-linux-arm64
       cache_from:
