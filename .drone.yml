@@ -12,7 +12,6 @@ trigger:
     - tag
 
 steps:
-  # 1) Regular branch builds (all branches)
   - name: publish-branch
     image: plugins/ecr
     when:
@@ -20,7 +19,7 @@ steps:
         - push
       branch:
         exclude:
-          - main        # everything except main
+          - main
     settings:
       access_key:
         from_secret: aws_access_key_id
@@ -35,7 +34,6 @@ steps:
         - ${DRONE_BRANCH/\//-}-linux-amd64
       create_repository: true
 
-  # 2) main branch builds → branch tag + latest
   - name: publish-main
     image: plugins/ecr
     when:
@@ -54,11 +52,10 @@ steps:
         from_secret: ecr_registry
       region: us-west-2
       tags:
-        - main-linux-amd64      # or ${DRONE_BRANCH/\//-}-linux-amd64
-        - latest-linux-amd64    # <--- this gives you "latest" for main
+        - main-linux-amd64
+        - latest-linux-amd64
       create_repository: true
 
-  # 3) Tag builds → use the git tag as the image tag
   - name: publish-tag
     image: plugins/ecr
     when:
@@ -75,7 +72,7 @@ steps:
         from_secret: ecr_registry
       region: us-west-2
       tags:
-        - ${DRONE_TAG}-linux-amd64   # e.g. v1.0.0-linux-amd64
+        - ${DRONE_TAG}-linux-amd64
       create_repository: true
 
 ---
