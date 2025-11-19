@@ -22,9 +22,6 @@ steps:
         us-west-2
       tags:
         - ${DRONE_BRANCH/\//-}-linux-amd64
-      cache_from:
-        - ${ecr_registry}/${repo_name}:${DRONE_BRANCH/\//-}-linux-amd64
-        - ${ecr_registry}/${repo_name}:main-linux-amd64
       create_repository: true
 
 ---
@@ -51,8 +48,5 @@ steps:
         us-west-2
       tags:
         - ${DRONE_BRANCH/\//-}-linux-arm64
-      cache_from:
-        - ${ecr_registry}/${repo_name}:${DRONE_BRANCH/\//-}-linux-arm64
-        - ${ecr_registry}/${repo_name}:main-linux-arm64
       create_repository: true
 
