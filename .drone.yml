@@ -9,11 +9,6 @@ platform:
 steps:
   - name: publish
     image: plugins/ecr
-    environment:
-      ECR_REGISTRY:
-        from_secret: ecr_registry
-      REPO_NAME:
-        from_secret: repo_name
     settings:
       access_key:
         from_secret: aws_access_key_id
@@ -28,8 +23,8 @@ steps:
       tags:
         - ${DRONE_BRANCH/\//-}-linux-amd64
       cache_from:
-        - ${ECR_REGISTRY}/${REPO_NAME}:${DRONE_BRANCH/\//-}-linux-amd64
-        - ${ECR_REGISTRY}/${REPO_NAME}:main-linux-amd64
+        - ${ecr_registry}/${repo_name}:${DRONE_BRANCH/\//-}-linux-amd64
+        - ${ecr_registry}/${repo_name}:main-linux-amd64
       create_repository: true
 
 ---
@@ -57,7 +52,7 @@ steps:
       tags:
         - ${DRONE_BRANCH/\//-}-linux-arm64
       cache_from:
-        - ${ECR_REGISTRY}/${REPO_NAME}:${DRONE_BRANCH/\//-}-linux-arm64
-        - ${ECR_REGISTRY}/${REPO_NAME}:main-linux-arm64
+        - ${ecr_registry}/${repo_name}:${DRONE_BRANCH/\//-}-linux-arm64
+        - ${ecr_registry}/${repo_name}:main-linux-arm64
       create_repository: true
 
