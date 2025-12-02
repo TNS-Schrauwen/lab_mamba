@@ -12,7 +12,6 @@ trigger:
     - tag
 
 steps:
-  steps:
   - name: build-test-image
     image: plugins/docker
     settings:
@@ -22,7 +21,6 @@ steps:
         - ${DRONE_COMMIT_SHA}
       dry_run: true
 
-  # 1) Run Nextflow smoke test against that local image
   - name: nextflow-smoke-test
     image: nextflow/nextflow:25.10.2
     volumes:
