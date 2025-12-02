@@ -12,6 +12,39 @@ trigger:
     - tag
 
 steps:
+  # step 0
+  steps:
+  # 0) Build image locally only (no push) using plugins/docker
+  - name: build-test-image
+    image: plugins/docker
+    settings:
+      repo:
+        lab-mamba-test
+      tags:
+        - ${DRONE_COMMIT_SHA}
+      dry_run: true
+
+  # 1) Run Nextflow smoke test against that local image
+  - name: nextflow-smoke-test
+    image: nextflow/nextflow:25.10.2
+    volumes:
+      - name: docker_sock
+        path: /var/run/docker.sock
+    environment:
+      NXF_HOME: /tmp/nxf
+      NXF_WORK: /tmp/work
+    commands:
+      - nextflow -version
+      - ls -R
+      - |
+        nextflow run ci/smoke.nf \
+          -c ci/nextflow.config \
+          -profile docker \
+          --container lab-mamba-test:${DRONE_COMMIT_SHA} \
+          --command 'wget -qO- https://example.com || echo wget_failed'
+    depends_on:
+      - build-test-image
+
   - name: publish-branch
     image: plugins/ecr
     when:
