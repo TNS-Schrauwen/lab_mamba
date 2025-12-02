@@ -31,12 +31,12 @@ steps:
       NXF_WORK: /tmp/work
     commands:
       - nextflow -version
-      - ls -R
       - |
         nextflow run ci/smoke.nf \
           -c ci/nextflow.config \
           --container lab-mamba-test:${DRONE_COMMIT_SHA} \
           --command 'wget -qO- https://example.com || echo wget_failed'
+      - cat smoke_output.txt
     depends_on:
       - build-test-image
 

@@ -10,24 +10,20 @@ process SMOKE_TEST {
 
     publishDir "results/smoke", mode: 'copy', overwrite: true
 
+    output:
+    path "smoke_output.txt", emit: smoke_output
+
     script:
     """
     set -euo pipefail
 
-    echo "Running smoke test in container: ${params.container}"
-    echo "Working directory: \$(pwd)"
-    echo "User: \$(id -u):\$(id -g)" || true
-
     # Run user-defined command
-    ${params.command}
-
-    # Exercise basic IO to catch permission issues
-    echo "test-ok" > smoke_output.txt
-    ls -l
+    ${params.command} > smoke_output.txt
     """
 }
 
 workflow {
     main:
         SMOKE_TEST()
+        SMOKE_TEST.out.smoke_output.view { "Generated smoke output file: ${it}" }
 }
