@@ -108,7 +108,7 @@ steps:
         - ${DRONE_TAG}-linux-amd64
       create_repository: true
 volumes:
-  - name: dockersock
+  - name: docker_sock
     host:
       path: /var/run/docker.sock
 ---
