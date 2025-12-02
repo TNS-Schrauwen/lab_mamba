@@ -31,6 +31,10 @@ steps:
       NXF_WORK: /tmp/work
     commands:
       - nextflow -version
+      - id
+      - ls -l /var/run
+      - ls -l /var/run/docker.sock || echo "no docker.sock"
+      - docker info || echo "docker info failed"
       - |
         nextflow run ci/smoke.nf \
           -c ci/nextflow.config \
