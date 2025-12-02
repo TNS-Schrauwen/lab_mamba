@@ -14,8 +14,10 @@ trigger:
 steps:
   - name: build-test-image
     image: docker:29-cli
+    volumes:
+      - name: docker_sock
+        path: /var/run/docker.sock
     commands:
-      - docker version
       - docker build -t lab-mamba-test-amd64:${DRONE_COMMIT_SHA} .
 
   - name: nextflow-smoke-test
