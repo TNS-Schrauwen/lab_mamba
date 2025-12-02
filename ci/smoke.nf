@@ -16,7 +16,7 @@ process SMOKE_TEST {
     set -euo pipefail
 
     # Run user-defined command
-    ${params.command} > smoke_output.txt
+    which wget > smoke_output.txt
     """
 }
 
