@@ -13,12 +13,10 @@ trigger:
 
 steps:
   - name: build-test-image
-    image: plugins/docker
-    settings:
-      repo: lab-mamba-test
-      tags:
-        - ${DRONE_COMMIT_SHA}
-      dry_run: true
+    image: docker:29-cli
+    commands:
+      - docker version
+      - docker build -t lab-mamba-test-amd64:${DRONE_COMMIT_SHA} .
 
   - name: nextflow-smoke-test
     image: nextflow/nextflow:25.10.2
