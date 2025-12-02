@@ -5,7 +5,6 @@ if( !params.container) {
 
 process SMOKE_TEST {
     container params.container
-    shell = ['/bin/sh', '-euo', 'pipefail']
 
     publishDir "results/smoke", mode: 'copy', overwrite: true
 
@@ -14,9 +13,6 @@ process SMOKE_TEST {
 
     script:
     """
-     #!/bin/sh
-    set -euo pipefail
-
     # Run user-defined command
     which wget > smoke_output.txt
     """
