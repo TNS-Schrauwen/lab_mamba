@@ -6,7 +6,7 @@ if( !params.container ) {
 process SMOKE_TEST {
     tag "${params.container}"
 
-    container params.container
+    container params.localContainer
 
     publishDir "results/smoke", mode: 'copy', overwrite: true
 
