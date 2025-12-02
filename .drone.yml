@@ -12,9 +12,7 @@ trigger:
     - tag
 
 steps:
-  # step 0
   steps:
-  # 0) Build image locally only (no push) using plugins/docker
   - name: build-test-image
     image: plugins/docker
     settings:
