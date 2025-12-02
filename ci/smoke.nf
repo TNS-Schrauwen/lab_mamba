@@ -16,7 +16,7 @@ process SMOKE_TEST {
     set -euo pipefail
 
     # Run user-defined command
-    ${params.command} > smoke_output.txt
+    "${params.command}" > smoke_output.txt
     """
 }
 
