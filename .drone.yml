@@ -18,7 +18,7 @@ steps:
       - name: docker_sock
         path: /var/run/docker.sock
     commands:
-      - docker build -t lab-mamba-test-amd64:${DRONE_COMMIT_SHA} .
+      - docker build -t lab-mamba-test:${DRONE_COMMIT_SHA} .
 
   - name: nextflow-smoke-test
     image: nextflow/nextflow:25.10.2
