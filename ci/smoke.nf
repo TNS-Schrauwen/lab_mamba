@@ -14,6 +14,7 @@ process SMOKE_TEST {
 
     script:
     """
+     #!/bin/sh
     set -euo pipefail
 
     # Run user-defined command
