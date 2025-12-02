@@ -107,7 +107,10 @@ steps:
       tags:
         - ${DRONE_TAG}-linux-amd64
       create_repository: true
-
+volumes:
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock
 ---
 kind: pipeline
 type: docker
