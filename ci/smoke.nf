@@ -5,6 +5,7 @@ if( !params.container) {
 
 process SMOKE_TEST {
     container params.container
+    shell = ['/bin/sh', '-euo', 'pipefail']
 
     publishDir "results/smoke", mode: 'copy', overwrite: true
 
