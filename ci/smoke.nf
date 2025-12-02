@@ -1,5 +1,5 @@
 
-if( !params.container ) {
+if( !params.localContainer ) {
     throw new IllegalArgumentException("Must pass --container with full image:tag")
 }
 
