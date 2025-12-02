@@ -4,6 +4,8 @@ if( !params.container) {
 }
 
 process SMOKE_TEST {
+    container params.container
+
     publishDir "results/smoke", mode: 'copy', overwrite: true
 
     output:
