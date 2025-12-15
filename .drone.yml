@@ -25,6 +25,8 @@ steps:
     volumes:
       - name: docker_sock
         path: /var/run/docker.sock
+      - name: tmp
+        path: /tmp
     environment:
       NXF_HOME: /tmp/nxf
       NXF_WORK: /tmp/work

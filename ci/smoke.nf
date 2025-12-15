@@ -1,6 +1,9 @@
-
 if( !params.container) {
     throw new IllegalArgumentException("Must pass --container with full image:tag")
+}
+
+if( !params.command) {
+    throw new IllegalArgumentException("Must pass --command with full image:tag")
 }
 
 process SMOKE_TEST {
@@ -14,7 +17,7 @@ process SMOKE_TEST {
     script:
     """
     # Run user-defined command
-    which wget > smoke_output.txt
+    ${params.command} > smoke_output.txt
     """
 }
 
