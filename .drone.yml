@@ -61,6 +61,8 @@ steps:
       tags:
         - ${DRONE_BRANCH/\//-}-linux-amd64
       create_repository: true
+    depends_on:
+      - nextflow-smoke-test
 
   - name: publish-main
     image: plugins/ecr
@@ -84,6 +86,8 @@ steps:
         - latest-linux-amd64
         - latest
       create_repository: true
+    depends_on:
+      - nextflow-smoke-test
 
   - name: publish-tag
     image: plugins/ecr
@@ -103,6 +107,8 @@ steps:
       tags:
         - ${DRONE_TAG}-linux-amd64
       create_repository: true
+    depends_on:
+      - nextflow-smoke-test
 volumes:
   - name: docker_sock
     host:
