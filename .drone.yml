@@ -35,7 +35,7 @@ steps:
         nextflow run ci/smoke.nf \
           -c ci/nextflow.config \
           --container lab-mamba-test:${DRONE_COMMIT_SHA} \
-          --command "wget -qO-  https://example.com"
+          --command script
       - cat results/smoke/smoke_output.txt
     depends_on:
       - build-test-image

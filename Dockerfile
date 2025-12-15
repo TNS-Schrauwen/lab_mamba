@@ -24,4 +24,7 @@ COPY script.sh /opt/script/script.sh
 RUN chmod +x /opt/script/script.sh && \
     ln -s /opt/script/script.sh /usr/local/bin/script
 
+USER $MAMBA_USER
+ENV PATH="$MAMBA_ROOT_PREFIX/bin:$PATH"
+
 CMD ["/bin/bash"]
