@@ -107,6 +107,9 @@ volumes:
   - name: docker_sock
     host:
       path: /var/run/docker.sock
+  - name: tmp
+    host:
+      path: /tmp
 ---
 kind: pipeline
 type: docker
