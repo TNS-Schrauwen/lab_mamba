@@ -174,3 +174,31 @@ nextflow run ci/smoke.nf \
 ## Base Image
 
 Built on `mambaorg/micromamba:1.5.10-noble` for reliability and performance.
+
+
+## Large Files
+
+It is not reccomended to include large files such as databases into the image but sometimes not easily avoidable due to the way a package was built (not by you). Use these steps to include mounts into the builds of the runners in drone.
+
+Under steps:
+```dockerfile
+    volumes:
+      - name: docker_sock
+        path: /var/run/docker.sock
+      - name: package_data
+        path: /drone/src/package/  
+```
+Included at the end of the steps:
+```dockerfile
+volumes:
+  - name: docker_sock
+    host:
+      path: /var/run/docker.sock
+  - name: package_data
+    host:
+      path: /home/user/package
+  - name: tmp
+    host:
+      path: /tmp
+
+```
